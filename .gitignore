@@ -1,0 +1,24 @@
+# Vivado 生成的临时文件和大文件
+*.jou
+*.log
+*.str
+*.xpr
+*.cache/
+*.hw/
+*.ip_user_files/
+*.runs/
+*.sim/
+
+# Bitstream 和其他生成的文件
+*.bit
+*.bin
+*.mcs
+*.prm
+*.debug
+
+# 仅保留源文件
+!*.v
+!*.sv
+!*.vhd
+!*.xdc
+!*.tcl 
