@@ -35,7 +35,7 @@ module AD7616_SoftwareSerial(
     input               i_ad_partial_rst,   // 部分复位信号 / Partial reset signal
     input    [15:0]     i_ad_channelsel,   // 通道选择信号 / Channel selection signal
     
-    input    [11:0]     i_ad_sample_nums,  // 采样数量 / Number of samples
+    input    [15:0]     i_ad_sample_nums,  // 采样数量 / Number of samples
     
     // 状态输出 / Status outputs
     output     reg      o_conv_done,        // 转换完成标志 / Conversion done flag
@@ -179,8 +179,8 @@ reg         timeout_rst;
 
 reg         channel_data_valid,channel_valid_1,channel_valid_2;
 
-reg [11:0] sampleNums;
-reg [11:0] sample_cnt;
+reg [15:0] sampleNums;
+reg [15:0] sample_cnt;
 reg [3:0] channel_cnt;
 reg [4:0] channel_cnt_max; //
 
@@ -455,7 +455,8 @@ always@(posedge clk or posedge rst)begin
         reg_operate_complete <= 1'b1;
         SeqStackNum <= 7'd0;
         SeqStackAddr <= 6'h20;
-        sample_cnt <= 12'd0;
+        sampleNums <= 16'd0;
+        sample_cnt <= 16'd0;
         channel_cnt_max <= 5'd0;
         channel_totle_nums <= 5'd0;
     end
@@ -464,7 +465,7 @@ always@(posedge clk or posedge rst)begin
                      channel_config_flag  ? SetChannelReg : RegOptFinish;
         reg_operate_complete <= 1'b0;
         sampleNums <= i_ad_sample_nums - 1'd1;
-        sample_cnt <= 12'd0;
+        sample_cnt <= 16'd0;
         channel_cnt <= 4'b0;
         channel_totle_nums <= channelA_ID + channelB_ID;
         channel_cnt_max <= (channelA_ID > channelB_ID) ? (channelA_ID) : (channelB_ID);
@@ -507,7 +508,7 @@ always@(posedge clk or posedge rst)begin
                 end end
             //finish
             OneFrameRead:begin `ifdef Simulation state_ascii <= "OneFrameRead"; `endif  
-                data_to_spi <= 16'b0;channel_cnt <= 4'd0;sample_cnt <= 12'd0;
+                data_to_spi <= 16'b0;channel_cnt <= 4'd0;sample_cnt <= 16'd0;
                 reg_state <= RegOptFinish;end
             RegOptFinish:begin `ifdef Simulation state_ascii <= "RegOptFinish"; `endif
                 data_to_spi <= 16'd0; reg_operate_complete <= 1'b1;reg_state <= IDLE;end

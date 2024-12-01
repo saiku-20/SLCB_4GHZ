@@ -20,13 +20,13 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 //unfinish
-
+/*
 `define clk_div_num 3;
 //base on 200mhz
 `define RESETb_WAIT          300000;   //1.5ms
-`defien DEVICE_SETUP_Partial 20;       //100ns
-`defien DEVICE_SETUP_Full    4000000;  //20ms
-`defien DEVICE_SETUP_Full_1  4300000;  //20ms
+`define DEVICE_SETUP_Partial 20;       //100ns
+`define DEVICE_SETUP_Full    4000000;  //20ms
+`define DEVICE_SETUP_Full_1  4300000;  //20ms
 `define RESETb_LOW_Partial   60; //300ns
 `define RESETb_LOW_Full      400; //2us
 module AD7616_SoftwareParallel(
@@ -45,7 +45,7 @@ module AD7616_SoftwareParallel(
     output          O_RDb           ,
     output          O_WRb           ,
     output          CONVERT         ,    
-    input           I_AD_BUSY        ,
+    input           I_AD_BUSY        
            
     
     );
@@ -158,3 +158,4 @@ always@(posedge clk or posedge rst)begin
 
 end
 endmodule
+*/

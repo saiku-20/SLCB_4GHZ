@@ -59,7 +59,7 @@ module SLCB_DataBus_Unpacking_Module(
     output  reg         O_N_RD,             // Read enable / 读使能
     output  reg         O_N_CE,             // Chip enable / 片选使能
     output  reg   [7:0] O_PCADD,            // PC address / PC地址
-    output        [63:0] O_WRData,           // Write data / 写数据
+    output  reg   [63:0] O_WRData,           // Write data / 写数据
     input         [63:0] I_RDData            // Read data / 读数据
 );
 // State Machine Definition / 状态机定义
@@ -105,11 +105,16 @@ reg     [4:0]   input_data_valid_r;   // Input data valid register / 输入数�
 reg     [63:0]  download_data;        // Download data buffer / 下载数据缓存
 reg     [63:0]  download_package_data; // Package data buffer / 数据包缓存
 reg             dbus_first_frame_flag; // First frame flag / 第一帧标志
-
+reg             DataBus_rxfifo_empty_r;
 always@(posedge CLK)begin
-    download_data <= DataBus_rxfifo_data;
+    if(RESET)begin
+        O_WRData <= 64'b0;
+        DataBus_rxfifo_empty_r <= 1'b0;
+    end
+    O_WRData <= DataBus_rxfifo_data;
+    DataBus_rxfifo_empty_r <= DataBus_rxfifo_empty;
 end
-always@(posedge CLK)begin
+always@(posedge CLK or posedge RESET)begin
     if(RESET)begin
         dbus_first_frame_flag <= 1'b0;
         download_package_data <= 64'h0;
@@ -176,7 +181,7 @@ always @(posedge CLK)begin
 end
 
 // Timeout Counter Logic / 超时计数器逻辑
-always@(posedge CLK or posedge RESET)begin
+always@(posedge CLK)begin
     if(RESET)
         recive_timeout_cnt <= 6'd0;
     else if(((~DataBus_rxfifo_en)&&(~O_N_WR)) || ((~DataBus_txfifo_en)&&(~O_N_RD)))
@@ -186,7 +191,7 @@ always@(posedge CLK or posedge RESET)begin
 end
 
 // Package Counter Logic / 数据包计数器逻辑
-always@(posedge CLK or posedge RESET)begin
+always@(posedge CLK)begin
     if(RESET)
         package_timeout_cnt <= 0;
     else if(operate_state == DOWNLOAD_PACKAGE || operate_state == DOWNLOAD_PACKAGE2)
@@ -227,26 +232,31 @@ end
 
 // FIFO Control Logic / FIFO控制逻辑
 always@(posedge CLK)begin
+    if(RESET)begin
+        DataBus_rxfifo_en   <=  1'b0;
+    end
+    else    begin
     case(operate_state)
         IDLE:begin
             // Enable RX FIFO when not empty and not already enabled
             // 当FIFO非空且未使能时使能RX FIFO
-            DataBus_rxfifo_en   <=  (~DataBus_rxfifo_empty & ~DataBus_rxfifo_en);   
+            DataBus_rxfifo_en   <=  (~DataBus_rxfifo_empty_r & ~DataBus_rxfifo_en);   
         end
         WRITE:begin
             // Enable RX FIFO during write operations
             // 写操作期间使能RX FIFO
-            DataBus_rxfifo_en   <=  (~DataBus_rxfifo_empty & ~DataBus_rxfifo_en);
+            DataBus_rxfifo_en   <=  (~DataBus_rxfifo_empty_r & ~DataBus_rxfifo_en);
         end
         READ:begin
             // Enable RX FIFO during read operations
             // 读操作期间使能RX FIFO
-            DataBus_rxfifo_en   <=  (~DataBus_rxfifo_empty & ~DataBus_rxfifo_en);
+            DataBus_rxfifo_en   <=  (~DataBus_rxfifo_empty_r & ~DataBus_rxfifo_en);
         end
         default:begin
             DataBus_rxfifo_en   <= 1'b0;
         end
     endcase
+    end
 end 
 
 // Input Data Valid Register Logic / 输入数据有效寄存器逻辑
@@ -273,7 +283,7 @@ end
 
 // Data Path Assignments / 数据通路分配
 assign  DataBus_txfifo_data = I_RDData;    // TX FIFO data from read data / 发送FIFO数据来自读数据
-assign  O_WRData = download_data;          // Write data from download buffer / 写数据来自下载缓存
+//assign  O_WRData = download_data;          // Write data from download buffer / 写数据来自下载缓存
 
 // PC Address Control / PC地址控制
 always@(posedge CLK)begin

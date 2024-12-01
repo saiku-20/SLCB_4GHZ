@@ -18,6 +18,8 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
+// Note: RESET signal is already synchronized in the top level module
+// 注意：复位信号已在顶层模块完成同步
 //serial traslate
 module SLCB_ADATE328_GEN(
     input               clk                   ,
@@ -62,15 +64,15 @@ localparam [4:0] ST_IDLE          = 5'b00001,
 reg  [28:0] Data_To_SPI;
 wire [28:0] Data_From_SPI;
 
-reg i_pe_rdwr_en_r;
-always@(posedge clk or posedge rst)begin
-    if(rst)
-        i_pe_rdwr_en_r <= 1'b0; 
-    else if(C_PE_RDWR_EN)
-        i_pe_rdwr_en_r <= 1'b1;
-    else
-        i_pe_rdwr_en_r <= 1'b0;   
-end
+//reg i_pe_rdwr_en_r;
+//always@(posedge clk or posedge rst)begin
+//    if(rst)
+//        i_pe_rdwr_en_r <= 1'b0; 
+//    else if(C_PE_RDWR_EN)
+//        i_pe_rdwr_en_r <= 1'b1;
+//    else
+//        i_pe_rdwr_en_r <= 1'b0;   
+//end
 
 //spi module
 reg write,pe_rst;
@@ -103,7 +105,7 @@ fifo_generator_64in_64out_D128_1 u_TX_fifo_generator_64in_64out_D128_1 (
   .clk(clk),                // input wire clk
   .srst(rst|pe_rst),              // input wire srst
   .din(I_PE_WR_DATA),                // input wire [63 : 0] din
-  .wr_en(i_pe_rdwr_en_r),            // input wire wr_en
+  .wr_en(C_PE_RDWR_EN),            // input wire wr_en
   .rd_en(spi_tx_en),            // input wire rd_en
   .dout(spi_tx_combine_data),              // output wire [63 : 0] dout
   .full(),              // output wire full
@@ -167,7 +169,7 @@ always@(posedge clk or posedge rst)begin
     end
     else
         spi_rx_en  <= 1'b0;
-        O_PE_RD_DATA <= 64'hffff_ffff_ffff_ffff;
+        O_PE_RD_DATA <= 64'h0000_0000_0000_0000;
         read_state <= 5'd0;
 end
 
@@ -197,8 +199,8 @@ always@(posedge clk or posedge rst)begin
         wr_rd0 <= 1'b1;
         wr_rd1 <= 1'b1;end
     else if(spi_tx_en_r)begin
-        error0 <= (!(|spi_tx_combine_data_r[31:0])) | (&spi_tx_combine_data_r[31:0]); //0 ： data is valid 
-        error1 <= (!(|spi_tx_combine_data_r[63:32])) | (&spi_tx_combine_data_r[63:32]); //
+        error0 <= ~|spi_tx_combine_data_r[31:0] | &spi_tx_combine_data_r[31:0]; //0 ： data is valid 
+        error1 <= ~|spi_tx_combine_data_r[63:32] | &spi_tx_combine_data_r[63:32]; //
         wr_rd0 <= spi_tx_combine_data_r[24];  //0 is read
         wr_rd1 <= spi_tx_combine_data_r[56];  //1 is write
         end
@@ -223,8 +225,8 @@ assign state = {error1,error0,wr_rd1,wr_rd0};
 
 localparam [3:0] MODE_WR_RD       = 4'b0010,  // write read
                  MODE_RD_WR       = 4'b0001,  // read write
-                 MODE_WR_WR       = 4'b0011,  // read twice
-                 MODE_RD_RD       = 4'b0000,  // write twice
+                 MODE_WR_WR       = 4'b0011,  // write twice
+                 MODE_RD_RD       = 4'b0000,  // read twice
                  MODE_HI_WR_ONLY  = 4'b011X,  // only MSH write
                  MODE_HI_RD_ONLY  = 4'b010X,  // only MSH read
                  MODE_LO_WR_ONLY  = 4'b10X1,  // only MSL write

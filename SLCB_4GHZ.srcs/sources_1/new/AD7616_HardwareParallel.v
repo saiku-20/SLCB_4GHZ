@@ -31,9 +31,10 @@ module AD7616_HardwareParallel(
     input           i_ad_partial_rst,
     input    [7:0]  i_ad_channelsel ,
 
-
+    input    [15:0]  i_ad_sample_nums,
     output           o_read_done     ,
-    output   [255:0] o_conv_ab       ,
+    input            i_ad_fifo_rd_en ,
+    output   [255:0] o_ad_fifo_dout  ,
 
     //output          O_HW_RNGSEL       ,// 
     //output  [2:0]   O_OS          ,    //over sample
@@ -57,7 +58,7 @@ module AD7616_HardwareParallel(
          
 );
 
-localparam clk_div_num          = 3        ; 
+localparam clk_div_num          = 3           ; 
 localparam CYCLE                = 8'd200      ; //1us
 localparam CONV_HIGH            = 8'd12       ; //60ns
 localparam CS_SETUP             = 8'd4        ; //20ns
@@ -119,6 +120,8 @@ always@(posedge clk or posedge rst)begin
     end
 end
 
+reg       ad_fifo_rd_en;
+wire [255:0] ad_fifo_dout;
 reg       ad_fifo_full;
 reg       ad_fifo_empty;
 reg [9:0] ad_fifo_count;
@@ -127,8 +130,8 @@ fifo_generator_32in_256out u_fifo_generator_32in_256out (
   .srst(rst),                    // input wire srst
   .din(conv_ab_data),                      // input wire [31 : 0] din
   .wr_en(read_pair_done),         // input wire wr_en
-  .rd_en(rd_en),                  // input wire rd_en
-  .dout(dout),                    // output wire [255 : 0] dout
+  .rd_en(ad_fifo_rd_en),                  // input wire rd_en
+  .dout(ad_fifo_dout),                    // output wire [255 : 0] dout
   .full(ad_fifo_full),                    // output wire full
   .empty(ad_fifo_empty),                  // output wire empty
   .wr_data_count(ad_fifo_count)  // output wire [9 : 0] wr_data_count
@@ -158,9 +161,10 @@ always@(posedge clk or posedge rst)begin
         shift_valid      <= 1'b1;
         chsel_shift <= chsel_shift;
     end
-    else
+    else begin  
         shift_valid      <= 1'b0;
         chsel_shift <= {chsel_shift[7:0],1'b0};
+    end
 end
 
 reg       RDb_rst, RDb_frm;
@@ -222,7 +226,7 @@ always@(posedge clk or posedge rst)begin
             ACQ_WAIT2:begin 
                 CSb_frm         <= (conv_clk_cnt == (conv_clk_cnt_temp + CS_SETUP + RDb_SETUP + DOUT_SETUP + RDb_LOW + RDb_HOLD + RDb_HOLD) ? 1'b0 : CSb_frm);
                 RDb_frm         <= (conv_clk_cnt == (conv_clk_cnt_temp + CS_SETUP + RDb_SETUP + DOUT_SETUP + RDb_LOW + RDb_HIGH) ? 1'b0 : RDb_frm);
-                conv_state      <= (conv_clk_cnt == (conv_clk_cnt_temp + CS_SETUP + RDb_SETUP + DOUT_SETUP + RDb_LOW + RDb_HIGH + DOUT_SETUP) ? ACQ_CONVA : conv_state);
+                conv_state      <= (conv_clk_cnt == (conv_clk_cnt_temp + CS_SETUP + RDb_SETUP + DOUT_SETUP + RDb_LOW + RDb_HIGH + DOUT_SETUP) ? ACQ_CONVB : conv_state);
             end
             ACQ_CONVB:begin 
                 RDb_frm         <= (conv_clk_cnt == (conv_clk_cnt_temp + CS_SETUP + RDb_SETUP + DOUT_SETUP + RDb_LOW + RDb_HIGH + DOUT_SETUP + RDb_LOW)) ? 1'b1 : RDb_rst;

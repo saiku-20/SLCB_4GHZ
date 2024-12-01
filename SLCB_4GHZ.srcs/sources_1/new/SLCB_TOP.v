@@ -39,12 +39,24 @@ module SLCB_TOP(
     output                          gt_tx_failbus_p             ,//gt??????????????
     output                          gt_tx_failbus_n             ,//gt??????????????
     //output      [1  :0]             dislabe  ,                 //?????????????????
-    output        [1:0]             SPI_RSTb                    ,
-    output        [1:0]             SPI_SCLK                    ,
-    output        [1:0]             SPI_CSb                     ,
-    input         [1:0]             SPI_SDO                     ,
-    output        [1:0]             SPI_SDI                     ,
-    input         [1:0]             SPI_BUSYb                  ,
+    output        [1:0]             O_PE_SPI_RSTb                    ,
+    output        [1:0]             O_PE_SPI_SCLK                    ,
+    output        [1:0]             O_PE_SPI_CSb                     ,
+    input         [1:0]             I_PE_SPI_SDO                     ,
+    output        [1:0]             O_PE_SPI_SDI                     ,
+    input         [1:0]             I_PE_SPI_BUSYb                  ,
+
+    output                          O_AD_RSTSETb                    ,
+    output                          O_AD_SER_PARb                   ,
+    output                          O_AD_REFSEL                     ,
+    output                          O_AD_SER1Wb                     ,
+    output                          O_AD_CONVST                     ,
+    output                          O_AD_SPI_RSTb                    ,
+    output                          O_AD_SPI_SCLK                    ,
+    output                          O_AD_SPI_CSb                     ,
+    input                           I_AD_SPI_SDO                     ,
+    output                          O_AD_SPI_SDI                     ,
+    input                           I_AD_SPI_BUSYb                  ,
                           
     output      [7:0]               led
 );
@@ -64,28 +76,28 @@ module SLCB_TOP(
     wire                           LANE_UP_FAILBUS       ;
     wire                           CHANNEL_UP_FAILBUS    ;
     
-    wire                O_N_WR            ;
-    wire                O_N_RD            ;
-    wire                O_N_CE            ;
-    wire          [7:0] O_PCADD           ;
-    wire          [63:0] O_WRData          ;
-    wire          [63:0] I_RDData          ;
+    wire                           O_N_WR                 ;
+    wire                           O_N_RD                 ;
+    wire                           O_N_CE                 ;
+    wire          [7:0]            O_PCADD                ;
+    wire          [63:0]           O_WRData               ;
+     reg          [63:0]           I_RDData               ;
     
-    wire                            CAP_EN_DATABUS        ;
-    wire          [63:0]            IN_CAP_DATA_DATABUS   ;
+    wire                            DataBus_txfifo_en        ;
+    wire          [63:0]            DataBus_txfifo_data   ;
     
-    wire                            EMPTY_DATABUS         ;
-    wire                            ALEMPTY_DATABUS       ;
-    wire                            RD_DATA_EN_DATABUS    ;
-    wire        [63:0]              O_CAP_DATA_DATABUS    ;
+    wire                            DataBus_rxfifo_empty         ;
+    wire                            Databus_rxfifo_alempty       ;
+    wire                            DataBus_rxfifo_en    ;
+    wire        [63:0]              DataBus_rxfifo_data    ;
     
-    wire                            CAP_EN_FAILBUS        ;
-    wire          [63:0]            IN_CAP_DATA_FAILBUS   ;
+    wire                            FailBus_txfifo_en        ;
+    wire          [63:0]            FailBus_txfifo_data   ;
     
-    wire                            EMPTY_FAILBUS         ;
-    wire                            ALEMPTY_FAILBUS       ;
-    wire                            RD_DATA_EN_FAILBUS    ;
-    wire        [63:0]              O_CAP_DATA_FAILBUS    ;
+    wire                            FailBus_rxfifo_empty         ;
+    wire                            FailBus_rxfifo_alempty       ;
+    wire                            FailBus_rxfifo_en    ;
+    wire        [63:0]              FailBus_rxfifo_data    ;
     
     wire c_rd_fpga_version;
     wire c_rd_board_version;
@@ -98,11 +110,11 @@ module SLCB_TOP(
     wire c_rd_syncbus_verify;
     
     wire c_wr_pin_en        ;
-    wire c_wr_reg_rdwr      ;
+    wire c_wr_pe_reg_rdwr   ;
     //wire c_wr_reg_read      ; 
-    wire c_wr_reg_rst       ;          
+    wire c_wr_pe_reg_rst    ;          
     wire c_rd_pin_en        ;
-    wire c_rd_reg_read      ;
+    wire c_rd_pe_reg_read   ;
     //assign dislabe = 2'd0;
     assign led[1:0] = {CHANNEL_UP_DATABUS,CHANNEL_UP_FAILBUS};
     assign led[4:2] = {clk_25m_led,clk_50m_led,clk_200m_led};
@@ -168,116 +180,130 @@ module SLCB_TOP(
           .CHANNEL_UP_FAILBUS   (CHANNEL_UP_FAILBUS)   ,
                                 
           //RX                  
-          .EMPTY_DATABUS        (EMPTY_DATABUS)  ,
-          .ALEMPTY_DATABUS      (ALEMPTY_DATABUS)  ,
-          .RD_DATA_EN_DATABUS   (RD_DATA_EN_DATABUS)  ,
-          .O_CAP_DATA_DATABUS   (O_CAP_DATA_DATABUS)  ,
+          .EMPTY_DATABUS        (DataBus_rxfifo_empty)  ,
+          .ALEMPTY_DATABUS      (Databus_rxfifo_alempty)  ,
+          .RD_DATA_EN_DATABUS   (DataBus_rxfifo_en)  ,
+          .O_CAP_DATA_DATABUS   (DataBus_rxfifo_data)  ,
           //TX                     
-          .CAP_EN_DATABUS       (CAP_EN_DATABUS)  ,
-          .IN_CAP_DATA_DATABUS  (IN_CAP_DATA_DATABUS),
+          .CAP_EN_DATABUS       (DataBus_txfifo_en)  ,
+          .IN_CAP_DATA_DATABUS  (DataBus_txfifo_data),
           //RX                  
-          .EMPTY_FAILBUS        (EMPTY_FAILBUS)  ,
-          .ALEMPTY_FAILBUS      (ALEMPTY_FAILBUS)  ,
-          .RD_DATA_EN_FAILBUS   (RD_DATA_EN_FAILBUS)  ,
-          .O_CAP_DATA_FAILBUS   (O_CAP_DATA_FAILBUS)  ,
+          .EMPTY_FAILBUS        (FailBus_rxfifo_empty)  ,
+          .ALEMPTY_FAILBUS      (FailBus_rxfifo_alempty)  ,
+          .RD_DATA_EN_FAILBUS   (FailBus_rxfifo_en)  ,
+          .O_CAP_DATA_FAILBUS   (FailBus_rxfifo_data)  ,
           //TX                     
-          .CAP_EN_FAILBUS       (CAP_EN_FAILBUS)  ,
-          .IN_CAP_DATA_FAILBUS  (IN_CAP_DATA_FAILBUS)       
+          .CAP_EN_FAILBUS       (FailBus_txfifo_en)  ,
+          .IN_CAP_DATA_FAILBUS  (FailBus_txfifo_data)       
       );
       
+      wire [15:0] fpga_version_rd_data;
+      wire [63:0] adate328_rd_data;
+      wire [63:0] databus_check_data;
+      wire [63:0] ad7616_rd_data;
+      always @(*) begin
+        case (1'b1)
+            c_rd_fpga_version:  I_RDData = {48'b0,fpga_version_rd_data};
+            c_rd_databus_verify:I_RDData = databus_check_data;
+            c_rd_failbus_verify:I_RDData = FailBus_rxfifo_data;
+            c_rd_pe_reg_read:   I_RDData = adate328_rd_data;
+            c_rd_ad_read_data:  I_RDData = ad7616_rd_data;
+            default:            I_RDData = 64'd0;
+        endcase
+      end     
+
       genvar r;
       parameter   GROUP_NUMS = 2;
       parameter   GROUP_PART_NUM = 1;
       parameter   GROUP_CH_NUM = GROUP_PART_NUM*4;
       parameter   CH_NUMS = 4*GROUP_NUMS*GROUP_PART_NUM;
       wire        [CH_NUMS-1:0]  P_B_Pin_En;
-      SYNC_LDC #(CH_NUMS) u_PinEnConfig(P_B_Pin_En,O_CAP_DATA_DATABUS[CH_NUMS-1:0], ~system_rst, c_wr_pin_en, clk_200m);
+      SYNC_LDC #(CH_NUMS) u_PinEnConfig(P_B_Pin_En,DataBus_rxfifo_data[CH_NUMS-1:0], ~system_rst, c_wr_pin_en, clk_200m);
       
       wire  c_pe_rdwr_en,c_pe_read_en,c_pe_rst_en;
-      assign c_pe_rst_en = c_wr_reg_rst;
-      assign c_pe_rdwr_en = RD_DATA_EN_DATABUS && (!O_N_CE) && (!O_N_WR) && c_wr_reg_rdwr;
-      assign c_pe_read_en = CAP_EN_DATABUS && (!O_N_CE) && (!O_N_RD)&& c_rd_reg_read;
+      assign c_pe_rst_en = c_wr_pe_reg_rst;
+      assign c_pe_rdwr_en = DataBus_rxfifo_en && (!O_N_CE) && (!O_N_WR) && c_wr_pe_reg_rdwr;
+      assign c_pe_read_en = DataBus_txfifo_en && (!O_N_CE) && (!O_N_RD) && c_rd_pe_reg_read;
     SLCB_ADATE328_GEN u_SLCB_ADATE328_GEN(
       .clk           (clk_200m),
       .rst           (system_rst),
       
       .P_B_Pin_En    (P_B_Pin_En[3:0]),
                      
-    //  .C_WR_PIN_EN   (c_wr_pin_en),
       .C_PE_RST_EN   (c_pe_rst_en),
       .C_PE_RDWR_EN  (c_pe_rdwr_en),
       .C_PE_READ_EN  (c_pe_read_en),
       //.C_PE_REG_RD (),
                    
-      .I_PE_WR_DATA     (O_CAP_DATA_DATABUS),
-      .O_PE_RD_DATA     (O_PE_RD_DATA),
+      .I_PE_WR_DATA     (O_WRData),
+      .O_PE_RD_DATA     (adate328_rd_data), //read form spi
       
-      .O_SPI_RSTb       (SPI_RSTb[0])   ,
-      .O_SPI_SCLK       (SPI_SCLK[0])   ,
-      .O_SPI_CSb        (SPI_CSb[0])   ,
-      .I_SPI_SDO        (SPI_SDO[0])   ,
-      .O_SPI_SDI        (SPI_SDI[0])   ,
+      .O_SPI_RSTb       (O_PE_SPI_RSTb[0])   ,
+      .O_SPI_SCLK       (O_PE_SPI_SCLK[0])   ,
+      .O_SPI_CSb        (O_PE_SPI_CSb[0])   ,
+      .I_SPI_SDO        (I_PE_SPI_SDO[0])   ,
+      .O_SPI_SDI        (O_PE_SPI_SDI[0])   ,
 
-      .I_SPI_BUSYb      (SPI_BUSYb[0])
+      .I_SPI_BUSYb      (I_PE_SPI_BUSYb[0])
     ); 
+
+wire c_ad_full_rst_en,c_ad_part_rst_en,c_ad_start_conv_en,c_ad_read_reg_en;
+assign c_ad_full_rst_en = c_wr_ad_full_rst;
+assign c_ad_part_rst_en = c_wr_ad_part_rst;
+assign c_ad_start_conv_en = c_wr_ad_start_conv;
+assign c_ad_read_reg_en = c_rd_ad_read_reg;  //reverse
+assign c_ad_read_data_en = DataBus_txfifo_en && (!O_N_CE) && (!O_N_RD) && c_rd_ad_read_data;
+assign c_ad_reg_config_en = DataBus_rxfifo_en && (!O_N_CE) && (!O_N_WR) && c_wr_ad_reg_config;
+ad7616_softserial_GEN  #(
+    .AD_REG_PREAMBLE(32'h5A5A_A5A5),
+    .TIMEOUT_VALUE(10'd1000)    
+) u_ad7616_softserial_GEN(
+    .clk                (clk_200m),                    // 系统时钟
+    .rst                (system_rst),                    // 复位信号
+    
+    .P_B_Pin_En         (P_B_Pin_En[15:0]),            // [15:0] 引脚使能
+    // Control signals
+    .C_AD_FULL_RST_EN   (c_ad_full_rst_en),      // 完全复位使能
+    .C_AD_PART_RST_EN   (c_ad_part_rst_en),      // 部分复位使能
+    .C_AD_START_CONV_EN (c_ad_start_conv_en),    // 开始转换使能
+    .C_AD_READ_REG_EN   (c_ad_read_reg_en),      // 读寄存器使能
+    .C_AD_READ_DATA_EN  (c_ad_read_data_en),     // 读数据使能
+
+    .C_AD_REG_CONFIG_EN (c_ad_reg_config_en),    // 寄存器配置使能
+    // Data interface
+    .I_AD_WR_DATA       (DataBus_txfifo_data),          // [63:0] 写入ADC的数据
+    .O_AD_RD_DATA       (ad7616_rd_data),          // [63:0] 从ADC读出的数据
+    
+    // AD7616 interface signals
+    .O_RSTSETb          (O_AD_RSTSETb),             // 复位控制
+    .O_SER_PARb         (O_AD_SER_PARb),            // 串/并行选择
+    .O_REFSEL           (O_AD_REFSEL),              // 参考电压选择
+    .O_SER1Wb           (O_AD_SER1Wb),              // 串行接口模式选择
+    .O_CONVST           (O_AD_CONVST),              // 转换启动信号
+    .I_AD_BUSY          (I_AD_SPI_BUSY),             // AD忙标志
+    .O_CSb              (O_AD_SPI_CSb),                 // 片选信号
+    .O_SCLK             (O_AD_SPI_SCLK),                // 串行时钟
+    .O_SDI              (O_AD_SPI_SDI),                 // 串行数据输入
+    .I_SDOA             (I_AD_SPI_SDOA),                // 串行数据输出A
+    .I_SDOB             (I_AD_SPI_SDOB)                 // 串行数据输出B
+);
+
       ////use to calculate the speed
       //reg [24:0] rx_cnt;
       //reg [6:0]  rx_rst_cnt;
       //always@(posedge clk_200m)begin
-      //  if(RD_DATA_EN_DATABUS)
+      //  if(DataBus_rxfifo_en)
       //      rx_cnt <= rx_cnt + 1'd1;
       //  else if(&rx_rst_cnt)
       //      rx_cnt <= 25'd0;
       //end
       //always@(posedge clk_200m)begin
-      //  if(!RD_DATA_EN_DATABUS)
+      //  if(!DataBus_rxfifo_en)
       //      rx_rst_cnt <= rx_rst_cnt + 1'd1;
       //  else 
       //      rx_rst_cnt <= 7'd0;
       //end
-      
-    SLCB_DataBus_Unpacking_Module u_SLCB_DataBus_Unpacking_Module(
-        .RESET                (system_rst)   ,
-        .CLK                  (clk_200m)   ,
-                              
-        .DataBus_txfifo_en    (CAP_EN_DATABUS)   ,
-        .DataBus_txfifo_data  (IN_CAP_DATA_DATABUS)   ,
-        
-        .DataBus_rxfifo_en    (RD_DATA_EN_DATABUS)   ,
-        .DataBus_rxfifo_data  (O_CAP_DATA_DATABUS)   ,
-        .DataBus_rxfifo_empty (EMPTY_DATABUS)   ,
-                              
-        .O_N_WR               (O_N_WR)   ,
-        .O_N_RD               (O_N_RD)   ,
-        .O_N_CE               (O_N_CE)   ,
-        .O_PCADD              (O_PCADD)   ,
-        .O_WRData             (O_WRData)   ,
-        .I_RDData             (I_RDData)   
-        //.O_SLCB_CTRL_STATE    ()           
-    );
-    /*
-    wire read,write,pe_rst;
-    wire read_done,write_done,reset_done;
-    wire [28:0] send_data,recive_data;
-    SLCB_ADATE328_SPI u_SLCB_ADATE328_SPI_W(
-        .clk        (clk_200m)       ,
-        .rst        (system_rst)       ,
-        .i_write     (write)         ,
-     //   .i_read      (read)             ,
-        .i_pe_rst    (pe_rst)       ,
-        .o_read_done  (read_done)       ,
-        .o_write_done (write_done)       ,
-        .o_reset_done (reset_done)      ,
-        .i_send_data  (send_data)       ,
-        .o_recive_data(recive_data)       ,
-        .O_SPI_RSTb   (SPI_RSTb)       ,
-        .O_SPI_SCLK   (SPI_SCLK)       ,
-        .O_SPI_CSb    (SPI_CSb)       ,
-        .I_SPI_SDO    (SPI_SDO)       ,
-        .O_SPI_SDI    (SPI_SDI)       ,
-        .I_SPI_BUSYb (SPI_BUSYb)
-    );
-    */
+    
 /*
 //????spi��??
     SLCB_SPI_offline_Debug u_SLCB_SPI_offline_Debug(
@@ -294,37 +320,48 @@ module SLCB_TOP(
         .I_SPI_BUSYb     (SPI_BUSYb)
     );
  */   
- //SLCB_ADATE328_SPI u_SLCB_ADATE328_SPI_E(
- //     .clk_200    (clk_200m)       ,
- //     .rst        (system_rst)       ,
- //     ._write     (write)         ,
- ////     ._read      (read)             ,
- //     ._pe_rst    (pe_rst)       ,
- //     .read_done  (read_done)       ,
- //     .write_done (write_done)       ,
- //     .send_data  (send_data)       ,
- //     .recive_data(recive_data)       ,
- //     .SPI_RSTb   (SPI_RSTb)       ,
- //     .SPI_SCLK   (SPI_SCLK)       ,
- //     .SPI_CSb    (SPI_CSb)       ,
- //     .SPI_SDO    (SPI_SDO)       ,
- //     .SPI_SDI    (SPI_SDI)       ,
- //     ._SPI_BUSYb (_SPI_BUSYb)
- // );
         
-     SLCB_DataBus_Check  u_SLCB_DataBus_Check(
-         .CLK_IN  (clk_200m)             ,
-         .RESET   (system_rst)           ,
-                  
-         .DATA_WR (c_wr_databus_verify)  ,
-         .DATA_IN (O_WRData)             ,
-                  
-         .DATA_RD (c_rd_databus_verify)  ,
-         .DATA_OUT(I_RDData)
-     );
+    SLCB_DataBus_Check  u_SLCB_DataBus_Check(
+        .CLK_IN  (clk_200m)             ,
+        .RESET   (system_rst)           ,
+                 
+        .DATA_WR (c_wr_databus_verify)  ,
+        .DATA_IN (O_WRData)             ,
+                 
+        .DATA_RD (c_rd_databus_verify)  ,
+        .DATA_OUT(databus_check_data)
+    );
     
+
+    SLCB_Version_Read u_SLCB_Version_Read (
+        .RESET              (system_rst),             // Input: Reset signal
+        .CLK_IN             (clk_200m),            // Input: Clock signal
+        .VERSION_RD         (c_rd_fpga_version),        // Input: Version read control
+        .FPGA_ID_RD         (),        // Input: FPGA ID read control
+        .FPGA_VER_ID_DATA   (fpga_version_rd_data)   // Output: 16-bit version/ID data
+    );
       
-      
+
+    SLCB_DataBus_Unpacking_Module u_SLCB_DataBus_Unpacking_Module(
+        .RESET                (system_rst)   ,
+        .CLK                  (clk_200m)   ,
+                              
+        .DataBus_txfifo_en    (DataBus_txfifo_en)   ,
+        .DataBus_txfifo_data  (DataBus_txfifo_data)   ,
+        
+        .DataBus_rxfifo_en    (DataBus_rxfifo_en)   ,
+        .DataBus_rxfifo_data  (DataBus_rxfifo_data)   ,
+        .DataBus_rxfifo_empty (DataBus_rxfifo_empty)   ,
+                              
+        .O_N_WR               (O_N_WR)      ,
+        .O_N_RD               (O_N_RD)      ,
+        .O_N_CE               (O_N_CE)      ,
+        .O_PCADD              (O_PCADD)     ,
+        .O_WRData             (O_WRData)    ,
+        .I_RDData             (I_RDData)   
+        //.O_SLCB_CTRL_STATE    ()           
+    );
+
       wire [7:0] WR_CON_C1 ,WR_CON_C2 ,WR_CON_C3 ,WR_CON_C4 ,WR_CON_C5 ,WR_CON_C6 ,WR_CON_C7 ,WR_CON_C8 ;
       wire [7:0] WR_CON_C9 ,WR_CON_C10,WR_CON_C11,WR_CON_C12,WR_CON_C13,WR_CON_C14,WR_CON_C15,WR_CON_C16;
       wire [7:0] WR_CON_C17,WR_CON_C18,WR_CON_C19,WR_CON_C20,WR_CON_C21,WR_CON_C22,WR_CON_C23,WR_CON_C24;
@@ -383,11 +420,18 @@ module SLCB_TOP(
     assign c_rd_syncbus_verify      =       RD_CON_C1[6];
     
     assign c_wr_pin_en              =       WR_CON_C2[0];
-    assign c_wr_reg_rdwr            =       WR_CON_C2[1];
-    assign c_wr_reg_rst             =       WR_CON_C2[2];
+    assign c_wr_pe_reg_rdwr         =       WR_CON_C2[1];
+    assign c_wr_pe_reg_rst          =       WR_CON_C2[2];
+
+    assign c_wr_ad_full_rst         =       WR_CON_C2[3];
+    assign c_wr_ad_part_rst         =       WR_CON_C2[4];
+    assign c_wr_ad_start_conv       =       WR_CON_C2[5];
+    assign c_wr_ad_reg_config       =       WR_CON_C2[6];    
     
     assign c_rd_pin_en              =       RD_CON_C2[0];
-    assign c_rd_reg_read            =       RD_CON_C2[1];
+    assign c_rd_pe_reg_read         =       RD_CON_C2[1];
+    assign c_rd_ad_read_reg         =       RD_CON_C2[2];
+    assign c_rd_ad_read_data        =       RD_CON_C2[3];
     //assign c_rd_pin_rd              =       WR_CON_C2[2];
     
     
@@ -400,11 +444,11 @@ ila_0 u_ila_0 (
 	.clk(clk_200m), // input wire clk
 	.probe0(clk_50m), // input wire [0:0]  probe0  
 	.probe1(clk_25m), // input wire [0:0]  probe1 
-	.probe2(CAP_EN_DATABUS), // input wire [0:0]  probe2 
-	.probe3(IN_CAP_DATA_DATABUS), // input wire [63:0]  probe3 
-	.probe4(RD_DATA_EN_DATABUS), // input wire [0:0]  probe4 
-	.probe5(O_CAP_DATA_DATABUS), // input wire [63:0]  probe5 
-	.probe6(EMPTY_DATABUS), // input wire [0:0]  probe6 
+	.probe2(DataBus_txfifo_en), // input wire [0:0]  probe2 
+	.probe3(DataBus_txfifo_data), // input wire [63:0]  probe3 
+	.probe4(DataBus_rxfifo_en), // input wire [0:0]  probe4 
+	.probe5(DataBus_rxfifo_data), // input wire [63:0]  probe5 
+	.probe6(DataBus_rxfifo_empty), // input wire [0:0]  probe6 
 	.probe7(O_N_WR), // input wire [0:0]  probe7 
 	.probe8(O_N_RD), // input wire [0:0]  probe8 
 	.probe9(O_N_CE), // input wire [0:0]  probe9 
@@ -431,7 +475,7 @@ ila_1 u_ila_1 (
 	.probe4(read_done), // input wire [0:0]  probe4 
 	.probe5(read_done), // input wire [0:0]  probe5 
 	.probe6(reset_done), // input wire [0:0]  probe6 
-	.probe7(CAP_EN_DATABUS), // input wire [0:0]  probe7 
+	.probe7(DataBus_txfifo_en), // input wire [0:0]  probe7 
 	.probe8(send_data), // input wire [28:0]  probe8 
 	.probe9(recive_data), // input wire [28:0]  probe9 
 	.probe10(SPI_RSTb), // input wire [0:0]  probe10 
@@ -440,8 +484,8 @@ ila_1 u_ila_1 (
 	.probe13(SPI_SDO), // input wire [0:0]  probe13 
 	.probe14(SPI_SDI), // input wire [0:0]  probe14 
 	.probe15(SPI_BUSYb), // input wire [0:0]  probe15 
-	.probe16(RD_DATA_EN_DATABUS), // input wire [0:0]  probe16 
-	.probe17(EMPTY_DATABUS), // input wire [0:0]  probe17 
+	.probe16(DataBus_rxfifo_en), // input wire [0:0]  probe16 
+	.probe17(DataBus_rxfifo_empty), // input wire [0:0]  probe17 
 	.probe18(c_wr_databus_verify), // input wire [0:0]  probe18 
 	.probe19(c_rd_databus_verify) // input wire [0:0]  probe19
 );

@@ -50,4 +50,6 @@ module SLCB_Version_Read(
             fpga_id_data  <=  PAR_FPGA_ID;
         end
     end
+
+    assign FPGA_VER_ID_DATA = (VERSION_RD == 1'b1)? fpga_version_data : 16'hZ;
 endmodule
